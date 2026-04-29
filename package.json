@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
-    "build": "tsc --noEmit",
+    "build": "node node_modules/typescript/bin/tsc --noEmit",
     "deploy": "vercel --prod",
     "inngest:dev": "npx inngest-cli@latest dev",
     "test:council": "tsx scripts/test-council.ts"
