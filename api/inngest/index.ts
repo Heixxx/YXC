@@ -1,4 +1,4 @@
-import { serve } from 'inngest/next';
+import { serve } from 'inngest/vercel';
 import { inngest } from '../../src/inngest/client';
 import { runCouncilFn } from '../../src/inngest/councilFn';
 
@@ -9,6 +9,4 @@ const handler = serve({
   functions: [runCouncilFn],
 });
 
-export const GET = handler;
-export const POST = handler;
-export const PUT = handler;
+export default handler;

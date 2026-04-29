@@ -1,9 +1,9 @@
 {
   "functions": {
     "api/index.ts": { "maxDuration": 5, "memory": 256 },
-    "api/council/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "api/inngest/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "api/signals/route.ts": { "maxDuration": 10, "memory": 512 }
+    "api/council/index.ts": { "maxDuration": 60, "memory": 1024 },
+    "api/inngest/index.ts": { "maxDuration": 60, "memory": 1024 },
+    "api/signals/index.ts": { "maxDuration": 10, "memory": 512 }
   },
   "headers": [
     {

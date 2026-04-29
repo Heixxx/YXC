@@ -135,6 +135,60 @@ export async function callPerplexity(
   return data.choices?.[0]?.message?.content ?? '';
 }
 
+// ============================================================================
+// KIMI (Moonshot AI) — OpenAI-compatible, long-context alternative
+// ============================================================================
+
+interface KimiMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export async function callKimiJSON<T>(
+  messages: KimiMessage[],
+  schema: z.ZodType<T>,
+  opts: { model?: string; temperature?: number; maxTokens?: number } = {}
+): Promise<T> {
+  const apiKey = process.env.KIMI_API_KEY;
+  if (!apiKey) throw new Error('KIMI_API_KEY missing');
+
+  const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: opts.model ?? 'moonshot-v1-8k',
+      messages,
+      temperature: opts.temperature ?? 0.3,
+      max_tokens: opts.maxTokens ?? 1024,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Kimi HTTP ${res.status}: ${await res.text()}`);
+  }
+
+  const data = await res.json() as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Kimi empty response');
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    const m = content.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('Kimi response not valid JSON');
+    parsed = JSON.parse(m[0]);
+  }
+
+  return schema.parse(parsed);
+}
+
 /** Helper: convert Zod schema to JSON Schema for Claude tool_use. */
 export function zodToJsonSchema(_schema: z.ZodType): object {
   // Minimal hand-rolled converter for our needs. For production consider
