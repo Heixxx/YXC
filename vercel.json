@@ -1,5 +1,6 @@
 {
   "functions": {
+    "api/index.ts": { "maxDuration": 5, "memory": 256 },
     "api/council/route.ts": { "maxDuration": 60, "memory": 1024 },
     "api/inngest/route.ts": { "maxDuration": 60, "memory": 1024 },
     "api/signals/route.ts": { "maxDuration": 10, "memory": 512 }
@@ -11,6 +12,7 @@
         { "key": "Access-Control-Allow-Origin", "value": "https://xyc-fron.vercel.app" },
         { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Vary", "value": "Origin" }
       ]
     }

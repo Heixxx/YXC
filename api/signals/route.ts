@@ -10,16 +10,18 @@ import { corsHeaders, validateOrigin } from '../../src/lib/auth';
 
 export const config = { runtime: 'nodejs', maxDuration: 10 };
 
-function signalsHeaders(): HeadersInit {
+function signalsHeaders(origin: string | null = null): HeadersInit {
   return {
-    ...corsHeaders('GET, OPTIONS'),
+    ...corsHeaders('GET, OPTIONS', origin),
     'Cache-Control': 'public, max-age=15',
   };
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  const origin = req.headers.get('Origin');
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: signalsHeaders() });
+    return new Response(null, { status: 204, headers: signalsHeaders(origin) });
   }
 
   // Block unknown origins (browser-originated requests from other sites)
@@ -29,7 +31,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
       status: 405,
-      headers: signalsHeaders(),
+      headers: signalsHeaders(origin),
     });
   }
 
@@ -42,6 +44,6 @@ export default async function handler(req: Request): Promise<Response> {
       signals,
       generatedAt: Date.now(),
     }),
-    { status: 200, headers: signalsHeaders() }
+    { status: 200, headers: signalsHeaders(origin) }
   );
 }

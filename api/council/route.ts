@@ -21,8 +21,10 @@ export const config = {
 };
 
 export default async function handler(req: Request): Promise<Response> {
+  const origin = req.headers.get('Origin');
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders('POST, OPTIONS') });
+    return new Response(null, { status: 204, headers: corsHeaders('POST, OPTIONS', origin) });
   }
 
   // Block unknown origins (browser requests from other sites)
@@ -36,7 +38,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
       status: 405,
-      headers: corsHeaders('POST, OPTIONS'),
+      headers: corsHeaders('POST, OPTIONS', origin),
     });
   }
 
@@ -46,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
   } catch {
     return new Response(JSON.stringify({ error: 'invalid-json' }), {
       status: 400,
-      headers: corsHeaders(),
+      headers: corsHeaders('POST, OPTIONS', origin),
     });
   }
 
@@ -54,7 +56,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!parsed.success) {
     return new Response(JSON.stringify({ error: 'validation', details: parsed.error.flatten() }), {
       status: 400,
-      headers: corsHeaders('POST, OPTIONS'),
+      headers: corsHeaders('POST, OPTIONS', origin),
     });
   }
 
@@ -65,7 +67,7 @@ export default async function handler(req: Request): Promise<Response> {
     await inngest.send({ name: 'council/run', data: { candidates: parsed.data.candidates } });
     return new Response(JSON.stringify({ ok: true, mode: 'async', queued: parsed.data.candidates.length }), {
       status: 202,
-      headers: corsHeaders('POST, OPTIONS'),
+      headers: corsHeaders('POST, OPTIONS', origin),
     });
   }
 
@@ -103,6 +105,6 @@ export default async function handler(req: Request): Promise<Response> {
         r ? { pair: r.candidate.pair, decision: r.decision, reason: r.reason, durationMs: r.durationMs } : null
       ),
     }),
-    { status: 200, headers: corsHeaders('POST, OPTIONS') }
+    { status: 200, headers: corsHeaders('POST, OPTIONS', origin) }
   );
 }
