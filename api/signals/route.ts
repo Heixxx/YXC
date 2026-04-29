@@ -6,29 +6,30 @@
  */
 import { kvGet } from '../../src/lib/cache';
 import type { Signal } from '../../src/lib/types';
+import { corsHeaders, validateOrigin } from '../../src/lib/auth';
 
 export const config = { runtime: 'nodejs', maxDuration: 10 };
 
-const ALLOWED = process.env.ALLOWED_ORIGIN ?? '*';
-
-function corsHeaders(): HeadersInit {
+function signalsHeaders(): HeadersInit {
   return {
-    'Access-Control-Allow-Origin': ALLOWED,
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
+    ...corsHeaders('GET, OPTIONS'),
     'Cache-Control': 'public, max-age=15',
   };
 }
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: signalsHeaders() });
   }
+
+  // Block unknown origins (browser-originated requests from other sites)
+  const originDenied = validateOrigin(req);
+  if (originDenied) return originDenied;
+
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
       status: 405,
-      headers: corsHeaders(),
+      headers: signalsHeaders(),
     });
   }
 
@@ -41,6 +42,6 @@ export default async function handler(req: Request): Promise<Response> {
       signals,
       generatedAt: Date.now(),
     }),
-    { status: 200, headers: corsHeaders() }
+    { status: 200, headers: signalsHeaders() }
   );
 }

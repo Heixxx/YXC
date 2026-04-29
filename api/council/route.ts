@@ -13,31 +13,30 @@ import { CouncilRequestSchema } from '../../src/lib/types';
 import { runCouncilForCandidate } from '../../src/workflow/council';
 import { kvLPush, kvSet } from '../../src/lib/cache';
 import { inngest } from '../../src/inngest/client';
+import { corsHeaders, validateApiKey, validateOrigin } from '../../src/lib/auth';
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 60,
 };
 
-const ALLOWED = process.env.ALLOWED_ORIGIN ?? '*';
-
-function corsHeaders(): HeadersInit {
-  return {
-    'Access-Control-Allow-Origin': ALLOWED,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json',
-  };
-}
-
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: corsHeaders('POST, OPTIONS') });
   }
+
+  // Block unknown origins (browser requests from other sites)
+  const originDenied = validateOrigin(req);
+  if (originDenied) return originDenied;
+
+  // Require valid API key for all non-preflight requests
+  const authDenied = validateApiKey(req);
+  if (authDenied) return authDenied;
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
       status: 405,
-      headers: corsHeaders(),
+      headers: corsHeaders('POST, OPTIONS'),
     });
   }
 
@@ -55,7 +54,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!parsed.success) {
     return new Response(JSON.stringify({ error: 'validation', details: parsed.error.flatten() }), {
       status: 400,
-      headers: corsHeaders(),
+      headers: corsHeaders('POST, OPTIONS'),
     });
   }
 
@@ -66,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
     await inngest.send({ name: 'council/run', data: { candidates: parsed.data.candidates } });
     return new Response(JSON.stringify({ ok: true, mode: 'async', queued: parsed.data.candidates.length }), {
       status: 202,
-      headers: corsHeaders(),
+      headers: corsHeaders('POST, OPTIONS'),
     });
   }
 
@@ -104,6 +103,6 @@ export default async function handler(req: Request): Promise<Response> {
         r ? { pair: r.candidate.pair, decision: r.decision, reason: r.reason, durationMs: r.durationMs } : null
       ),
     }),
-    { status: 200, headers: corsHeaders() }
+    { status: 200, headers: corsHeaders('POST, OPTIONS') }
   );
 }

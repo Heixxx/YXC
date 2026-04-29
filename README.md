@@ -84,7 +84,8 @@ ANTHROPIC_API_KEY=...
 DEEPSEEK_API_KEY=...
 PERPLEXITY_API_KEY=...
 TRADINGECONOMICS_API_KEY=...   # optional
-ALLOWED_ORIGIN=https://your-frontend.lovable.app
+ALLOWED_ORIGIN=https://xyc-fron.vercel.app
+INTERNAL_API_KEY=<generate with: openssl rand -hex 32>   # protects /api/council
 INNGEST_EVENT_KEY=...           # from app.inngest.com
 INNGEST_SIGNING_KEY=...
 ```
@@ -192,6 +193,21 @@ If after a week of running you see:
 - Perplexity: 50 req/min on standard tier — cache covers re-runs within 30 min.
 - Anthropic: 50 req/min default — only 1 call per candidate (judge), so fine.
 
-## Security note
+## Security
 
-CORS is gated by `ALLOWED_ORIGIN`. Set this to your Lovable production URL. For development, you can temporarily set it to `*` but never in prod — anyone could spam your council and burn your API budget.
+### CORS
+All API routes enforce `ALLOWED_ORIGIN` — set to `https://xyc-fron.vercel.app`. The `Vary: Origin` header is included so CDN caches don't bleed cross-origin responses. Requests from any other browser origin receive a `403 Forbidden`.
+
+### API key (`INTERNAL_API_KEY`)
+The `POST /api/council` endpoint (and any future mutating routes) require an `Authorization: Bearer <key>` header. Generate a strong key with:
+```
+openssl rand -hex 32
+```
+Store it in Vercel → Settings → Environment Variables as `INTERNAL_API_KEY`. Pass the same key from your frontend as:
+```
+Authorization: Bearer <INTERNAL_API_KEY>
+```
+If the env var is absent the backend logs a warning and skips the check (development convenience only — always set it in production).
+
+### Public read endpoint
+`GET /api/signals` is CORS-restricted but does **not** require an API key, since the frontend must be able to poll it without exposing a secret in browser network tabs. The CORS restriction to `https://xyc-fron.vercel.app` is sufficient protection for browser clients.
