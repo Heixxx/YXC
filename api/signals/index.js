@@ -91,28 +91,37 @@ function signalsHeaders(origin = null) {
   };
 }
 async function handler(req) {
-  const origin = req.headers.get("Origin");
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: signalsHeaders(origin) });
+  try {
+    const origin = req.headers.get("Origin");
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: signalsHeaders(origin) });
+    }
+    const originDenied = validateOrigin(req);
+    if (originDenied) return originDenied;
+    if (req.method !== "GET") {
+      return new Response(JSON.stringify({ error: "method-not-allowed" }), {
+        status: 405,
+        headers: signalsHeaders(origin)
+      });
+    }
+    const signals = await kvGet("signals:forex:pro:latest") ?? [];
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        count: signals.length,
+        signals,
+        generatedAt: Date.now()
+      }),
+      { status: 200, headers: signalsHeaders(origin) }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : void 0;
+    return new Response(
+      JSON.stringify({ ok: false, error: message, stack }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
-  const originDenied = validateOrigin(req);
-  if (originDenied) return originDenied;
-  if (req.method !== "GET") {
-    return new Response(JSON.stringify({ error: "method-not-allowed" }), {
-      status: 405,
-      headers: signalsHeaders(origin)
-    });
-  }
-  const signals = await kvGet("signals:forex:pro:latest") ?? [];
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      count: signals.length,
-      signals,
-      generatedAt: Date.now()
-    }),
-    { status: 200, headers: signalsHeaders(origin) }
-  );
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

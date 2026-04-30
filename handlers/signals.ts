@@ -18,32 +18,41 @@ function signalsHeaders(origin: string | null = null): HeadersInit {
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  const origin = req.headers.get('Origin');
+  try {
+    const origin = req.headers.get('Origin');
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: signalsHeaders(origin) });
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: signalsHeaders(origin) });
+    }
+
+    // Block unknown origins (browser-originated requests from other sites)
+    const originDenied = validateOrigin(req);
+    if (originDenied) return originDenied;
+
+    if (req.method !== 'GET') {
+      return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
+        status: 405,
+        headers: signalsHeaders(origin),
+      });
+    }
+
+    const signals = (await kvGet<Signal[]>('signals:forex:pro:latest')) ?? [];
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        count: signals.length,
+        signals,
+        generatedAt: Date.now(),
+      }),
+      { status: 200, headers: signalsHeaders(origin) }
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    return new Response(
+      JSON.stringify({ ok: false, error: message, stack }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
-
-  // Block unknown origins (browser-originated requests from other sites)
-  const originDenied = validateOrigin(req);
-  if (originDenied) return originDenied;
-
-  if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
-      status: 405,
-      headers: signalsHeaders(origin),
-    });
-  }
-
-  const signals = (await kvGet<Signal[]>('signals:forex:pro:latest')) ?? [];
-
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      count: signals.length,
-      signals,
-      generatedAt: Date.now(),
-    }),
-    { status: 200, headers: signalsHeaders(origin) }
-  );
 }
