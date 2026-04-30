@@ -1,6 +1,3 @@
-# Exclude TypeScript source files — Vercel deploys the pre-bundled JS (api/**/*.js)
+# Exclude only raw TypeScript files from api/ — our pre-bundled .js files handle those routes.
+# Everything else (handlers/, src/, scripts/) must be present for the build step.
 api/**/*.ts
-handlers/
-src/
-scripts/
-tsconfig*.json
