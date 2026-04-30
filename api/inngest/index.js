@@ -1476,3 +1476,9 @@ var inngest_default = (0, import_next.serve)({
 0 && (module.exports = {
   config
 });
+// Vercel Node.js runtime expects module.exports to be the handler function
+if (typeof module.exports.default === 'function') {
+  const _fn = module.exports.default;
+  if (module.exports.config) _fn.config = module.exports.config;
+  module.exports = _fn;
+}

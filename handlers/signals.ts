@@ -1,58 +1,45 @@
 /**
  * GET /api/signals?tier=PRO
- *
  * Returns latest published PRO signals from cache.
- * Frontend polls this for the PRO tab in Signals page.
  */
+import type { IncomingMessage, ServerResponse } from 'http';
 import { kvGet } from '../src/lib/cache';
 import type { Signal } from '../src/lib/types';
-import { corsHeaders, validateOrigin } from '../src/lib/auth';
 
-export const config = { runtime: 'nodejs', maxDuration: 10 };
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? 'https://xyc-fron.vercel.app';
 
-function signalsHeaders(origin: string | null = null): HeadersInit {
-  return {
-    ...corsHeaders('GET, OPTIONS', origin),
-    'Cache-Control': 'public, max-age=15',
-  };
+function setCorsHeaders(res: ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'public, max-age=15');
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  setCorsHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.statusCode = 405;
+    res.end(JSON.stringify({ error: 'method-not-allowed' }));
+    return;
+  }
+
   try {
-    const origin = req.headers.get('Origin');
-
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: signalsHeaders(origin) });
-    }
-
-    // Block unknown origins (browser-originated requests from other sites)
-    const originDenied = validateOrigin(req);
-    if (originDenied) return originDenied;
-
-    if (req.method !== 'GET') {
-      return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
-        status: 405,
-        headers: signalsHeaders(origin),
-      });
-    }
-
     const signals = (await kvGet<Signal[]>('signals:forex:pro:latest')) ?? [];
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        count: signals.length,
-        signals,
-        generatedAt: Date.now(),
-      }),
-      { status: 200, headers: signalsHeaders(origin) }
-    );
+    res.statusCode = 200;
+    res.end(JSON.stringify({ ok: true, count: signals.length, signals, generatedAt: Date.now() }));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    return new Response(
-      JSON.stringify({ ok: false, error: message, stack }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    res.statusCode = 500;
+    res.end(JSON.stringify({ ok: false, error: message }));
   }
 }

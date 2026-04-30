@@ -1,77 +1,82 @@
 /**
  * POST /api/council
- *
- * Body: { candidates: [{pair, direction, l0Confidence, triggeredStrategies, currentPrice}, ...] }
- *
- * Two modes:
- *  - sync (default): runs council inline, returns Signal[] in response (for testing / direct mode)
- *  - async: triggers Inngest event and returns 202 (production for high concurrency)
- *
- * Set ?mode=async to use Inngest path.
  */
+import type { IncomingMessage, ServerResponse } from 'http';
 import { CouncilRequestSchema } from '../src/lib/types';
 import { runCouncilForCandidate } from '../src/workflow/council';
 import { kvLPush, kvSet } from '../src/lib/cache';
 import { inngest } from '../src/inngest/client';
-import { corsHeaders, validateApiKey, validateOrigin } from '../src/lib/auth';
 
-export const config = {
-  runtime: 'nodejs',
-  maxDuration: 60,
-};
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? 'https://xyc-fron.vercel.app';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? '';
 
-export default async function handler(req: Request): Promise<Response> {
-  const origin = req.headers.get('Origin');
+function setCorsHeaders(res: ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Content-Type', 'application/json');
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders('POST, OPTIONS', origin) });
+    res.statusCode = 204;
+    res.end();
+    return;
   }
 
-  // Block unknown origins (browser requests from other sites)
-  const originDenied = validateOrigin(req);
-  if (originDenied) return originDenied;
-
-  // Require valid API key for all non-preflight requests
-  const authDenied = validateApiKey(req);
-  if (authDenied) return authDenied;
+  // Auth check
+  const authHeader = (req.headers['authorization'] ?? '') as string;
+  if (INTERNAL_API_KEY && authHeader !== `Bearer ${INTERNAL_API_KEY}`) {
+    res.statusCode = 401;
+    res.end(JSON.stringify({ error: 'unauthorized' }));
+    return;
+  }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'method-not-allowed' }), {
-      status: 405,
-      headers: corsHeaders('POST, OPTIONS', origin),
-    });
+    res.statusCode = 405;
+    res.end(JSON.stringify({ error: 'method-not-allowed' }));
+    return;
   }
 
   let body: unknown;
   try {
-    body = await req.json();
+    body = JSON.parse(await readBody(req));
   } catch {
-    return new Response(JSON.stringify({ error: 'invalid-json' }), {
-      status: 400,
-      headers: corsHeaders('POST, OPTIONS', origin),
-    });
+    res.statusCode = 400;
+    res.end(JSON.stringify({ error: 'invalid-json' }));
+    return;
   }
 
   const parsed = CouncilRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return new Response(JSON.stringify({ error: 'validation', details: parsed.error.flatten() }), {
-      status: 400,
-      headers: corsHeaders('POST, OPTIONS', origin),
-    });
+    res.statusCode = 400;
+    res.end(JSON.stringify({ error: 'validation', details: parsed.error.flatten() }));
+    return;
   }
 
-  const url = new URL(req.url);
-  const mode = url.searchParams.get('mode');
+  const urlObj = new URL(req.url ?? '/', `https://${req.headers.host ?? 'localhost'}`);
+  const mode = urlObj.searchParams.get('mode');
 
   if (mode === 'async') {
     await inngest.send({ name: 'council/run', data: { candidates: parsed.data.candidates } });
-    return new Response(JSON.stringify({ ok: true, mode: 'async', queued: parsed.data.candidates.length }), {
-      status: 202,
-      headers: corsHeaders('POST, OPTIONS', origin),
-    });
+    res.statusCode = 202;
+    res.end(JSON.stringify({ ok: true, mode: 'async', queued: parsed.data.candidates.length }));
+    return;
   }
 
-  // Sync path
   const t0 = Date.now();
   const results = await Promise.all(
     parsed.data.candidates.map((c) =>
@@ -86,25 +91,22 @@ export default async function handler(req: Request): Promise<Response> {
     .filter((r) => r && r.signal && r.decision !== 'DROP')
     .map((r) => r!.signal!);
 
-  // Persist
   for (const s of signals) {
     await kvLPush('signals:forex:pro', s, 100);
     await kvSet(`signal:${s.id}`, s, 60 * 60 * 6);
   }
   await kvSet('signals:forex:pro:latest', signals, 60 * 30);
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      mode: 'sync',
-      durationMs: Date.now() - t0,
-      processed: parsed.data.candidates.length,
-      published: signals.length,
-      signals,
-      decisions: results.map((r) =>
-        r ? { pair: r.candidate.pair, decision: r.decision, reason: r.reason, durationMs: r.durationMs } : null
-      ),
-    }),
-    { status: 200, headers: corsHeaders('POST, OPTIONS', origin) }
-  );
+  res.statusCode = 200;
+  res.end(JSON.stringify({
+    ok: true,
+    mode: 'sync',
+    durationMs: Date.now() - t0,
+    processed: parsed.data.candidates.length,
+    published: signals.length,
+    signals,
+    decisions: results.map((r) =>
+      r ? { pair: r.candidate.pair, decision: r.decision, reason: r.reason, durationMs: r.durationMs } : null
+    ),
+  }));
 }

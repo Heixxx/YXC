@@ -20,7 +20,6 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // handlers/signals.ts
 var signals_exports = {};
 __export(signals_exports, {
-  config: () => config,
   default: () => handler
 });
 module.exports = __toCommonJS(signals_exports);
@@ -49,81 +48,42 @@ async function kvGet(key) {
   }
 }
 
-// src/lib/auth.ts
-var ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "https://xyc-fron.vercel.app";
-var EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-var ALL_ALLOWED_ORIGINS = /* @__PURE__ */ new Set([ALLOWED_ORIGIN, ...EXTRA_ORIGINS]);
-function resolveOrigin(requestOrigin) {
-  if (requestOrigin && ALL_ALLOWED_ORIGINS.has(requestOrigin)) {
-    return requestOrigin;
-  }
-  return ALLOWED_ORIGIN;
-}
-function corsHeaders(methods = "GET, OPTIONS", requestOrigin = null) {
-  return {
-    "Access-Control-Allow-Origin": resolveOrigin(requestOrigin),
-    "Access-Control-Allow-Methods": methods,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Credentials": "true",
-    "Vary": "Origin",
-    "Content-Type": "application/json"
-  };
-}
-function validateOrigin(req) {
-  if (req.method === "OPTIONS") return null;
-  const origin = req.headers.get("Origin");
-  if (!origin) return null;
-  if (!ALL_ALLOWED_ORIGINS.has(origin)) {
-    return new Response(JSON.stringify({ error: "forbidden", message: "Origin not allowed" }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-  return null;
-}
-
 // handlers/signals.ts
-var config = { runtime: "nodejs", maxDuration: 10 };
-function signalsHeaders(origin = null) {
-  return {
-    ...corsHeaders("GET, OPTIONS", origin),
-    "Cache-Control": "public, max-age=15"
-  };
+var ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "https://xyc-fron.vercel.app";
+function setCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Cache-Control", "public, max-age=15");
 }
-async function handler(req) {
+async function handler(req, res) {
+  setCorsHeaders(res);
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+  if (req.method !== "GET") {
+    res.statusCode = 405;
+    res.end(JSON.stringify({ error: "method-not-allowed" }));
+    return;
+  }
   try {
-    const origin = req.headers.get("Origin");
-    if (req.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: signalsHeaders(origin) });
-    }
-    const originDenied = validateOrigin(req);
-    if (originDenied) return originDenied;
-    if (req.method !== "GET") {
-      return new Response(JSON.stringify({ error: "method-not-allowed" }), {
-        status: 405,
-        headers: signalsHeaders(origin)
-      });
-    }
     const signals = await kvGet("signals:forex:pro:latest") ?? [];
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        count: signals.length,
-        signals,
-        generatedAt: Date.now()
-      }),
-      { status: 200, headers: signalsHeaders(origin) }
-    );
+    res.statusCode = 200;
+    res.end(JSON.stringify({ ok: true, count: signals.length, signals, generatedAt: Date.now() }));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : void 0;
-    return new Response(
-      JSON.stringify({ ok: false, error: message, stack }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    res.statusCode = 500;
+    res.end(JSON.stringify({ ok: false, error: message }));
   }
 }
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  config
-});
+// Vercel Node.js runtime expects module.exports to be the handler function
+if (typeof module.exports.default === 'function') {
+  const _fn = module.exports.default;
+  if (module.exports.config) _fn.config = module.exports.config;
+  module.exports = _fn;
+}

@@ -1,14 +1,10 @@
-import { corsHeaders } from '../src/lib/auth';
+import type { IncomingMessage, ServerResponse } from 'http';
 
-export const config = { runtime: 'nodejs', maxDuration: 5 };
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? 'https://xyc-fron.vercel.app';
 
-export default function handler(req: Request): Response {
-  const origin = req.headers.get('Origin');
-  return new Response(
-    JSON.stringify({ ok: true, service: 'forexai-engine', message: 'API działa' }),
-    {
-      status: 200,
-      headers: corsHeaders('GET, OPTIONS', origin),
-    }
-  );
+export default function handler(_req: IncomingMessage, res: ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Content-Type', 'application/json');
+  res.statusCode = 200;
+  res.end(JSON.stringify({ ok: true, service: 'forexai-engine', message: 'API działa' }));
 }

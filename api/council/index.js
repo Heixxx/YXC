@@ -30,7 +30,6 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // handlers/council.ts
 var council_exports = {};
 __export(council_exports, {
-  config: () => config,
   default: () => handler
 });
 module.exports = __toCommonJS(council_exports);
@@ -1417,120 +1416,64 @@ var inngest = new import_inngest.Inngest({
   eventKey: process.env.INNGEST_EVENT_KEY
 });
 
-// src/lib/auth.ts
-var ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "https://xyc-fron.vercel.app";
-var EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-var ALL_ALLOWED_ORIGINS = /* @__PURE__ */ new Set([ALLOWED_ORIGIN, ...EXTRA_ORIGINS]);
-function resolveOrigin(requestOrigin) {
-  if (requestOrigin && ALL_ALLOWED_ORIGINS.has(requestOrigin)) {
-    return requestOrigin;
-  }
-  return ALLOWED_ORIGIN;
-}
-function corsHeaders(methods = "GET, OPTIONS", requestOrigin = null) {
-  return {
-    "Access-Control-Allow-Origin": resolveOrigin(requestOrigin),
-    "Access-Control-Allow-Methods": methods,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Credentials": "true",
-    "Vary": "Origin",
-    "Content-Type": "application/json"
-  };
-}
-function validateApiKey(req) {
-  const secret = process.env.INTERNAL_API_KEY;
-  const origin = req.headers.get("Origin");
-  if (!secret) {
-    console.warn("[auth] INTERNAL_API_KEY is not set - API key validation is DISABLED");
-    return null;
-  }
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token) {
-    return new Response(JSON.stringify({ error: "unauthorized", message: "Missing Authorization header" }), {
-      status: 401,
-      headers: corsHeaders("POST, OPTIONS", origin)
-    });
-  }
-  if (!timingSafeEqual(token, secret)) {
-    return new Response(JSON.stringify({ error: "forbidden", message: "Invalid API key" }), {
-      status: 403,
-      headers: corsHeaders("POST, OPTIONS", origin)
-    });
-  }
-  return null;
-}
-function timingSafeEqual(a, b) {
-  if (a.length !== b.length) {
-    let diff2 = 0;
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      diff2 |= (a.charCodeAt(i) ?? 0) ^ (b.charCodeAt(i) ?? 0);
-    }
-    return false;
-  }
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-function validateOrigin(req) {
-  if (req.method === "OPTIONS") return null;
-  const origin = req.headers.get("Origin");
-  if (!origin) return null;
-  if (!ALL_ALLOWED_ORIGINS.has(origin)) {
-    return new Response(JSON.stringify({ error: "forbidden", message: "Origin not allowed" }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-  return null;
-}
-
 // handlers/council.ts
-var config = {
-  runtime: "nodejs",
-  maxDuration: 60
-};
-async function handler(req) {
-  const origin = req.headers.get("Origin");
+var ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "https://xyc-fron.vercel.app";
+var INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? "";
+function setCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Content-Type", "application/json");
+}
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+async function handler(req, res) {
+  setCorsHeaders(res);
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders("POST, OPTIONS", origin) });
+    res.statusCode = 204;
+    res.end();
+    return;
   }
-  const originDenied = validateOrigin(req);
-  if (originDenied) return originDenied;
-  const authDenied = validateApiKey(req);
-  if (authDenied) return authDenied;
+  const authHeader = req.headers["authorization"] ?? "";
+  if (INTERNAL_API_KEY && authHeader !== `Bearer ${INTERNAL_API_KEY}`) {
+    res.statusCode = 401;
+    res.end(JSON.stringify({ error: "unauthorized" }));
+    return;
+  }
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "method-not-allowed" }), {
-      status: 405,
-      headers: corsHeaders("POST, OPTIONS", origin)
-    });
+    res.statusCode = 405;
+    res.end(JSON.stringify({ error: "method-not-allowed" }));
+    return;
   }
   let body;
   try {
-    body = await req.json();
+    body = JSON.parse(await readBody(req));
   } catch {
-    return new Response(JSON.stringify({ error: "invalid-json" }), {
-      status: 400,
-      headers: corsHeaders("POST, OPTIONS", origin)
-    });
+    res.statusCode = 400;
+    res.end(JSON.stringify({ error: "invalid-json" }));
+    return;
   }
   const parsed = CouncilRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return new Response(JSON.stringify({ error: "validation", details: parsed.error.flatten() }), {
-      status: 400,
-      headers: corsHeaders("POST, OPTIONS", origin)
-    });
+    res.statusCode = 400;
+    res.end(JSON.stringify({ error: "validation", details: parsed.error.flatten() }));
+    return;
   }
-  const url = new URL(req.url);
-  const mode = url.searchParams.get("mode");
+  const urlObj = new URL(req.url ?? "/", `https://${req.headers.host ?? "localhost"}`);
+  const mode = urlObj.searchParams.get("mode");
   if (mode === "async") {
     await inngest.send({ name: "council/run", data: { candidates: parsed.data.candidates } });
-    return new Response(JSON.stringify({ ok: true, mode: "async", queued: parsed.data.candidates.length }), {
-      status: 202,
-      headers: corsHeaders("POST, OPTIONS", origin)
-    });
+    res.statusCode = 202;
+    res.end(JSON.stringify({ ok: true, mode: "async", queued: parsed.data.candidates.length }));
+    return;
   }
   const t0 = Date.now();
   const results = await Promise.all(
@@ -1547,22 +1490,22 @@ async function handler(req) {
     await kvSet(`signal:${s.id}`, s, 60 * 60 * 6);
   }
   await kvSet("signals:forex:pro:latest", signals, 60 * 30);
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      mode: "sync",
-      durationMs: Date.now() - t0,
-      processed: parsed.data.candidates.length,
-      published: signals.length,
-      signals,
-      decisions: results.map(
-        (r) => r ? { pair: r.candidate.pair, decision: r.decision, reason: r.reason, durationMs: r.durationMs } : null
-      )
-    }),
-    { status: 200, headers: corsHeaders("POST, OPTIONS", origin) }
-  );
+  res.statusCode = 200;
+  res.end(JSON.stringify({
+    ok: true,
+    mode: "sync",
+    durationMs: Date.now() - t0,
+    processed: parsed.data.candidates.length,
+    published: signals.length,
+    signals,
+    decisions: results.map(
+      (r) => r ? { pair: r.candidate.pair, decision: r.decision, reason: r.reason, durationMs: r.durationMs } : null
+    )
+  }));
 }
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  config
-});
+// Vercel Node.js runtime expects module.exports to be the handler function
+if (typeof module.exports.default === 'function') {
+  const _fn = module.exports.default;
+  if (module.exports.config) _fn.config = module.exports.config;
+  module.exports = _fn;
+}
