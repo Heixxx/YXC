@@ -1,16 +1,15 @@
-import type { VercelKV } from '@vercel/kv';
-
 // Lazy singleton — avoids crash at module init when KV env vars are missing
-let _kv: VercelKV | null | undefined;
+let _kv: import('@vercel/kv').VercelKV | null | undefined;
 
-async function getKv(): Promise<VercelKV | null> {
+async function getKv(): Promise<import('@vercel/kv').VercelKV | null> {
   if (_kv !== undefined) return _kv;
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
     _kv = null;
     return null;
   }
   try {
-    const mod = await import('@vercel/kv');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@vercel/kv') as { kv: import('@vercel/kv').VercelKV };
     _kv = mod.kv;
   } catch {
     _kv = null;
