@@ -1,0 +1,5 @@
+# Exclude TypeScript source files — Vercel deploys the pre-bundled JS (api/**/*.js)
+api/**/*.ts
+src/
+scripts/
+tsconfig*.json

@@ -1,9 +1,9 @@
 {
   "functions": {
-    "api/index.ts":          { "maxDuration": 5,  "memory": 256,  "includeFiles": "src/**" },
-    "api/council/index.ts":  { "maxDuration": 60, "memory": 1024, "includeFiles": "src/**" },
-    "api/inngest/index.ts":  { "maxDuration": 60, "memory": 1024, "includeFiles": "src/**" },
-    "api/signals/index.ts":  { "maxDuration": 10, "memory": 512,  "includeFiles": "src/**" }
+    "api/index.js":          { "maxDuration": 5,  "memory": 256  },
+    "api/council/index.js":  { "maxDuration": 60, "memory": 1024 },
+    "api/inngest/index.js":  { "maxDuration": 60, "memory": 1024 },
+    "api/signals/index.js":  { "maxDuration": 10, "memory": 512  }
   },
   "routes": [
     {

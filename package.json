@@ -5,7 +5,7 @@
   "description": "PRO signals backend - Mastra agent council for forex trading signals",
   "scripts": {
     "dev": "vercel dev",
-    "build": "node node_modules/typescript/bin/tsc --noEmit",
+    "build": "node scripts/bundle.mjs",
     "deploy": "vercel --prod",
     "inngest:dev": "npx inngest-cli@latest dev",
     "test:council": "tsx scripts/test-council.ts"
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "esbuild": "^0.24.2",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vercel": "^39.0.0"
