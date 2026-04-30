@@ -4,31 +4,6 @@
     "api/council/index.js":  { "maxDuration": 60, "memory": 1024 },
     "api/inngest/index.js":  { "maxDuration": 60, "memory": 1024 },
     "api/signals/index.js":  { "maxDuration": 10, "memory": 512  }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "https://xyc-fron.vercel.app",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Credentials": "true",
-        "Vary": "Origin"
-      },
-      "status": 204
-    },
-    {
-      "src": "/api/(.*)",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://xyc-fron.vercel.app",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Credentials": "true",
-        "Vary": "Origin"
-      },
-      "continue": true,
-      "dest": "/api/$1"
-    }
-  ]
+  }
 }
+
