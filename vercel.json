@@ -1,4 +1,5 @@
 {
+  "buildCommand": "echo 'pre-built'",
   "functions": {
     "api/index.js":          { "maxDuration": 5,  "memory": 256  },
     "api/council/index.js":  { "maxDuration": 60, "memory": 1024 },
