@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "PRO signals backend - Mastra agent council for forex trading signals",
-  "type": "module",
   "scripts": {
     "dev": "vercel dev",
     "build": "node node_modules/typescript/bin/tsc --noEmit",
