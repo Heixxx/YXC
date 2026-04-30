@@ -116,6 +116,8 @@ function timingSafeEqual(a: string, b: string): boolean {
  * Used as an extra layer for non-browser clients that spoof Origin.
  */
 export function validateOrigin(req: Request): Response | null {
+  // Never block preflight — OPTIONS is handled at CDN level by vercel.json
+  if (req.method === 'OPTIONS') return null;
   const origin = req.headers.get('Origin');
   // Allow requests with no Origin header (server-to-server calls with valid API key)
   if (!origin) return null;
