@@ -11,10 +11,10 @@
 import { build } from 'esbuild';
 
 const entries = [
-  { in: 'api/index.ts',          out: 'api/index.js' },
-  { in: 'api/signals/index.ts',  out: 'api/signals/index.js' },
-  { in: 'api/council/index.ts',  out: 'api/council/index.js' },
-  { in: 'api/inngest/index.ts',  out: 'api/inngest/index.js' },
+  { in: 'handlers/root.ts',     out: 'api/index.js' },
+  { in: 'handlers/signals.ts',  out: 'api/signals/index.js' },
+  { in: 'handlers/council.ts',  out: 'api/council/index.js' },
+  { in: 'handlers/inngest.ts',  out: 'api/inngest/index.js' },
 ];
 
 for (const { in: entryPoint, out: outfile } of entries) {

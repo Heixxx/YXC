@@ -9,11 +9,11 @@
  *
  * Set ?mode=async to use Inngest path.
  */
-import { CouncilRequestSchema } from '../../src/lib/types';
-import { runCouncilForCandidate } from '../../src/workflow/council';
-import { kvLPush, kvSet } from '../../src/lib/cache';
-import { inngest } from '../../src/inngest/client';
-import { corsHeaders, validateApiKey, validateOrigin } from '../../src/lib/auth';
+import { CouncilRequestSchema } from '../src/lib/types';
+import { runCouncilForCandidate } from '../src/workflow/council';
+import { kvLPush, kvSet } from '../src/lib/cache';
+import { inngest } from '../src/inngest/client';
+import { corsHeaders, validateApiKey, validateOrigin } from '../src/lib/auth';
 
 export const config = {
   runtime: 'nodejs',

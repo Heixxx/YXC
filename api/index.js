@@ -17,13 +17,13 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/index.ts
-var index_exports = {};
-__export(index_exports, {
+// handlers/root.ts
+var root_exports = {};
+__export(root_exports, {
   config: () => config,
   default: () => handler
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(root_exports);
 
 // src/lib/auth.ts
 var ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "https://xyc-fron.vercel.app";
@@ -46,7 +46,7 @@ function corsHeaders(methods = "GET, OPTIONS", requestOrigin = null) {
   };
 }
 
-// api/index.ts
+// handlers/root.ts
 var config = { runtime: "nodejs", maxDuration: 5 };
 function handler(req) {
   const origin = req.headers.get("Origin");

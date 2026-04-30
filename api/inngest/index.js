@@ -27,13 +27,13 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/inngest/index.ts
-var index_exports = {};
-__export(index_exports, {
+// handlers/inngest.ts
+var inngest_exports = {};
+__export(inngest_exports, {
   config: () => config,
-  default: () => index_default
+  default: () => inngest_default
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(inngest_exports);
 var import_next = require("inngest/next");
 
 // src/inngest/client.ts
@@ -1466,9 +1466,9 @@ var scheduledCouncilFn = inngest.createFunction(
   async () => ({ note: "scheduled cron disabled \u2014 frontend drives council via /api/council" })
 );
 
-// api/inngest/index.ts
+// handlers/inngest.ts
 var config = { runtime: "nodejs", maxDuration: 60 };
-var index_default = (0, import_next.serve)({
+var inngest_default = (0, import_next.serve)({
   client: inngest,
   functions: [runCouncilFn]
 });

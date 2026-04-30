@@ -4,9 +4,9 @@
  * Returns latest published PRO signals from cache.
  * Frontend polls this for the PRO tab in Signals page.
  */
-import { kvGet } from '../../src/lib/cache';
-import type { Signal } from '../../src/lib/types';
-import { corsHeaders, validateOrigin } from '../../src/lib/auth';
+import { kvGet } from '../src/lib/cache';
+import type { Signal } from '../src/lib/types';
+import { corsHeaders, validateOrigin } from '../src/lib/auth';
 
 export const config = { runtime: 'nodejs', maxDuration: 10 };
 

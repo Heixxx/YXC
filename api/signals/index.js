@@ -17,13 +17,13 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/signals/index.ts
-var index_exports = {};
-__export(index_exports, {
+// handlers/signals.ts
+var signals_exports = {};
+__export(signals_exports, {
   config: () => config,
   default: () => handler
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(signals_exports);
 
 // src/lib/cache.ts
 var _kv;
@@ -82,7 +82,7 @@ function validateOrigin(req) {
   return null;
 }
 
-// api/signals/index.ts
+// handlers/signals.ts
 var config = { runtime: "nodejs", maxDuration: 10 };
 function signalsHeaders(origin = null) {
   return {

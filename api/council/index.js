@@ -27,13 +27,13 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/council/index.ts
-var index_exports = {};
-__export(index_exports, {
+// handlers/council.ts
+var council_exports = {};
+__export(council_exports, {
   config: () => config,
   default: () => handler
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(council_exports);
 
 // src/lib/types.ts
 var import_zod = require("zod");
@@ -1487,7 +1487,7 @@ function validateOrigin(req) {
   return null;
 }
 
-// api/council/index.ts
+// handlers/council.ts
 var config = {
   runtime: "nodejs",
   maxDuration: 60
